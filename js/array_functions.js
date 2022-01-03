@@ -206,7 +206,7 @@ function genGaussianFilterSequence(maxSigma, maxSize) {
     return filters;
 }
 
-function genNoise2D(ySize, xSize, power, gFilteres) {
+function genNoise2D(ySize, xSize, power, gFilters) {
     // generate proto random array
     const originalNoise = get2dArrayInitialized(ySize, xSize);
     for (let i in getRange(ySize)) {
@@ -216,12 +216,12 @@ function genNoise2D(ySize, xSize, power, gFilteres) {
     }
 
     // define coefficient to multiply each scale by.
-    var coefArr = getSlicedRange(1, gFilteres.length + 1).map(x => Math.pow(x, power));
+    var coefArr = getSlicedRange(1, gFilters.length + 1).map(x => Math.pow(x, power));
     coefArr = mulArrScalar([coefArr], 1 / coefArr.reduce((sum, element) => sum + element, 0))[0];
 
     var sINoise = get2dArrayInitialized(ySize, xSize);
-    for (let s in getRange(gFilteres.length)) {
-        sINoise = addArrArr(sINoise, conv2D(originalNoise, gFilteres[s]));
+    for (let s in getRange(gFilters.length)) {
+        sINoise = addArrArr(sINoise, conv2D(originalNoise, gFilters[s]));
     }
 
     return sINoise;
