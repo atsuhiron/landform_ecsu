@@ -302,7 +302,7 @@ function calcLaplacian(arr) {
 function calcErosion(arr, cInstable, cSteep) {
     const steepArr = mulArrScalar(calcGradNorm(arr), cSteep);
     const instArr = mulArrScalar(calcLaplacian(arr), cInstable);
-    return toNonNegative(subArrArr(steepArr - instArr));
+    return toNonNegative(subArrArr(steepArr, instArr));
 }
 
 function calcSediment(arr, cSed) {
@@ -314,5 +314,14 @@ function calcSediment(arr, cSed) {
 function step(arr, cInstable, cSteep, cSed, diffFilter) {
     var diff = subArrArr(calcSediment(arr, cSed), calcErosion(arr, cInstable, cSteep));
     diff = conv2D(diff, diffFilter);
-    return addArrArr(arr, diff);
+    return toNonNegative(addArrArr(arr, diff));
+}
+
+function float2DToUint81D(arr2d) {
+    const originYLen = arr2d.length;
+    var arr1d = [];
+    getRange(originYLen).forEach(
+        i => arr1d = arr1d.concat(arr2d[i])
+    )
+    return new Uint8Array(arr1d);
 }
