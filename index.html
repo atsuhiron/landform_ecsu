@@ -11,6 +11,7 @@
             background-color: #bfd1e5;
             color: #61443e;
         }
+
         a {
             color: #a06851;
         }
@@ -22,6 +23,7 @@
 
 <body>
     <canvas id="myCanvas"></canvas>
+    <!-- draw script -->
     <script>
         const width = 1280;
         const height = 720;
@@ -133,12 +135,12 @@
             controlsReset();
             const controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-            texture = new THREE.CanvasTexture( generateTexture( float2DToUint81D(altitudeArr), arrLenX, arrLenY ) );
+            texture = new THREE.CanvasTexture(generateTexture(float2DToUint81D(altitudeArr), arrLenX, arrLenY));
             const material = new THREE.MeshBasicMaterial({
                 color: 0xeeee00, side: THREE.DoubleSide
             });
-            mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: texture } ) );
-			scene.add( mesh );
+            mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture }));
+            scene.add(mesh);
 
             // 初回実行
             tick();
@@ -178,10 +180,10 @@
 
         function updateTexture(arr, ratioZ) {
             const multipliedUint = float2DToUint81D(mulArrScalar(arr, ratioZ));
-            texture = new THREE.CanvasTexture( generateTexture( multipliedUint, arrLenX, arrLenY));
-            mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: texture } ) );
+            texture = new THREE.CanvasTexture(generateTexture(multipliedUint, arrLenX, arrLenY));
+            mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture }));
         }
-        
+
 
     </script>
     <br>
