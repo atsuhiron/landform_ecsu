@@ -12,6 +12,3 @@
 ## ボタンの説明
 - Reset Camera Position: カメラポジションがリセットされます。
 - Upheaval: 地形が隆起します。
-  
-## 仕組み
-$$A(x, y)$$
