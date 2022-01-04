@@ -6,6 +6,15 @@
     <!-- three.jsを読み込む -->
     <!--<script src="js/three.js"></script>-->
     <!--<script src="js/OrbitControls.js"></script>-->
+    <style>
+        body {
+            background-color: #bfd1e5;
+            color: #61443e;
+        }
+        a {
+            color: #a06851;
+        }
+    </style>
     <script src="https://unpkg.com/three@0.131.3/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.131.3/examples/js/controls/OrbitControls.js"></script>
     <script src="js/array_functions.js"></script>
@@ -14,9 +23,21 @@
 <body>
     <canvas id="myCanvas"></canvas>
     <script>
+        const width = 1280;
+        const height = 720;
+
+        const arrLenY = 80;
+        const arrLenX = 120;
+        var cnt = 0;
+
+        const noisePower = 0.4;
+        const gFilters = genGaussianFilterSequence(10, 80);
+        var altitudeArr = genNoise2D(arrLenY, arrLenX, noisePower, gFilters)
+        const geometry = new THREE.PlaneGeometry(arrLenX, arrLenY, arrLenX - 1, arrLenY - 1);
+        var mesh, texture;
+        let controls, scene, renderer;
         window.addEventListener("DOMContentLoaded", init);
-        const width = 960;
-        const height = 540;
+
         // カメラを作成
         const camera = new THREE.PerspectiveCamera(
             45,
@@ -25,34 +46,99 @@
             10000
         );
 
+        function controlsReset() {
+            camera.position.set(0, -80, +350);
+        }
+
+        function upheavalAlt() {
+            altitudeArr = genNoise2D(arrLenY, arrLenX, noisePower, gFilters);
+        }
+
+        function generateTexture(data, width, height) {
+            // bake lighting into texture
+            let context, image, imageData, shade;
+
+            const vector3 = new THREE.Vector3(0, 0, 0);
+
+            const sun = new THREE.Vector3(1, 1, 1);
+            sun.normalize();
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            context = canvas.getContext('2d');
+            context.fillStyle = '#000';
+            context.fillRect(0, 0, width, height);
+
+            image = context.getImageData(0, 0, canvas.width, canvas.height);
+            imageData = image.data;
+
+            for (let i = 0, j = 0, l = imageData.length; i < l; i += 4, j++) {
+
+                vector3.x = data[j - 2] - data[j + 2];
+                vector3.y = 2;
+                vector3.z = data[j - width * 2] - data[j + width * 2];
+                vector3.normalize();
+
+                shade = vector3.dot(sun);
+
+                imageData[i] = (96 + shade * 128) * (0.5 + data[j] * 0.007);
+                imageData[i + 1] = (32 + shade * 96) * (0.5 + data[j] * 0.007);
+                imageData[i + 2] = (shade * 96) * (0.5 + data[j] * 0.007);
+
+            }
+
+            context.putImageData(image, 0, 0);
+
+            // Scaled 4x
+
+            const canvasScaled = document.createElement('canvas');
+            canvasScaled.width = width * 4;
+            canvasScaled.height = height * 4;
+
+            context = canvasScaled.getContext('2d');
+            context.scale(4, 4);
+            context.drawImage(canvas, 0, 0);
+
+            image = context.getImageData(0, 0, canvasScaled.width, canvasScaled.height);
+            imageData = image.data;
+
+            for (let i = 0, l = imageData.length; i < l; i += 4) {
+
+                const v = ~ ~(Math.random() * 5);
+
+                imageData[i] += v;
+                imageData[i + 1] += v;
+                imageData[i + 2] += v;
+
+            }
+
+            context.putImageData(image, 0, 0);
+            return canvasScaled;
+        }
+
         function init() {
             // レンダラーを作成
-            const renderer = new THREE.WebGLRenderer({
+            renderer = new THREE.WebGLRenderer({
                 canvas: document.querySelector("#myCanvas")
             });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(width, height);
 
             // シーンを作成
-            const scene = new THREE.Scene();
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xbfd1e5);
 
-            camera.position.set(0, 0, +1000);
+            controlsReset();
             const controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-            // 箱を作成
-            const geometry = new THREE.BoxGeometry(500, 500, 500);
-            const material = new THREE.MeshStandardMaterial({
-                color: 0x0000ff
+            texture = new THREE.CanvasTexture( generateTexture( float2DToUint81D(altitudeArr), arrLenX, arrLenY ) );
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xeeee00, side: THREE.DoubleSide
             });
-            const box = new THREE.Mesh(geometry, material);
-            scene.add(box);
-
-            // 平行光源
-            const light = new THREE.DirectionalLight(0xffffff);
-            light.intensity = 2; // 光の強さを倍に
-            light.position.set(1, 1, 1);
-            // シーンに追加
-            scene.add(light);
+            mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: texture } ) );
+			scene.add( mesh );
 
             // 初回実行
             tick();
@@ -60,25 +146,47 @@
             function tick() {
                 controls.update();
                 requestAnimationFrame(tick);
+                cnt += 1;
+                if (cnt % 2 != 0) return;
 
-                // 箱を回転させる
-                box.rotation.x += 0.001;
-                box.rotation.y += 0.001;
+                // 地形の更新
+                updatelandformstep(altitudeArr);
+                console.log(altitudeArr[12][50]);
 
+                // geometryの更新
+                updatePlane(altitudeArr, 10);
+
+                // texture の更新
+                updateTexture(altitudeArr, 10);
                 // レンダリング
                 renderer.render(scene, camera);
             }
-
-            
         }
 
-        function controlsReset() {
-            camera.position.set(0, 0, +1000);
+        function updatelandformstep() {
+            altitudeArr = step(altitudeArr, 0.2, 0.4, 0.5, gFilters[0]);
         }
+
+        function updatePlane(arr, ratioZ) {
+            const vertices = geometry.attributes.position.array;
+            for (let y = 0; y < arr.length; y++) {
+                for (let x = 0; x < arr[0].length; x++) {
+                    vertices[(x + (y * arr[0].length)) * 3 + 2] = arr[y][x] * ratioZ;
+                }
+            }
+        }
+
+        function updateTexture(arr, ratioZ) {
+            const multipliedUint = float2DToUint81D(mulArrScalar(arr, ratioZ));
+            texture = new THREE.CanvasTexture( generateTexture( multipliedUint, arrLenX, arrLenY));
+            mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: texture } ) );
+        }
+        
 
     </script>
+    <br>
     <button type="button" onClick="controlsReset()">Reset Camera Position</button>
-    <button type="button" onClick="">Upheaval</button>
+    <button type="button" onClick="upheavalAlt()">Upheaval</button>
 </body>
 
 </html>
